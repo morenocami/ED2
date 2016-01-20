@@ -1,49 +1,83 @@
-//The sample code for driving one way motor encoder
-const byte encoder0pinA = 2;//A pin -> the interrupt pin 0
-const byte encoder0pinB = 4;//B pin -> the digital pin 4
-byte encoder0PinALast;
-int duration;//the number of the pulses
-boolean Direction;//the rotation direction 
-  
-  
+// connect motor controller pins to Arduino digital pins
+// motor one
+int enA = 10;
+int in1 = 9;
+int in2 = 8;
+// motor two
+int enB = 5;
+int in3 = 7;
+int in4 = 6;
 void setup()
-{  
-  Serial.begin(57600);//Initialize the serial port
-  EncoderInit();//Initialize the module
+{
+  // set all the motor control pins to outputs
+  pinMode(enA, OUTPUT);
+  pinMode(enB, OUTPUT);
+  pinMode(in1, OUTPUT);
+  pinMode(in2, OUTPUT);
+  pinMode(in3, OUTPUT);
+  pinMode(in4, OUTPUT);
 }
-  
+void demoOne()
+{
+  // this function will run the motors in both directions at a fixed speed
+  // turn on motor A
+  digitalWrite(in1, HIGH);
+  digitalWrite(in2, LOW);
+  // set speed to 200 out of possible range 0~255
+  analogWrite(enA, 200);
+  // turn on motor B
+  digitalWrite(in3, HIGH);
+  digitalWrite(in4, LOW);
+  // set speed to 200 out of possible range 0~255
+  analogWrite(enB, 200);
+  delay(2000);
+  // now change motor directions
+  digitalWrite(in1, LOW);
+  digitalWrite(in2, HIGH);  
+  digitalWrite(in3, LOW);
+  digitalWrite(in4, HIGH); 
+  delay(2000);
+  // now turn off motors
+  digitalWrite(in1, LOW);
+  digitalWrite(in2, LOW);  
+  digitalWrite(in3, LOW);
+  digitalWrite(in4, LOW);
+}
+void demoTwo()
+{
+  // this function will run the motors across the range of possible speeds
+  // note that maximum speed is determined by the motor itself and the operating voltage
+  // the PWM values sent by analogWrite() are fractions of the maximum speed possible 
+  // by your hardware
+  // turn on motors
+  digitalWrite(in1, LOW);
+  digitalWrite(in2, HIGH);  
+  digitalWrite(in3, LOW);
+  digitalWrite(in4, HIGH); 
+  // accelerate from zero to maximum speed
+  for (int i = 0; i < 256; i++)
+  {
+    analogWrite(enA, i);
+    analogWrite(enB, i);
+    delay(20);
+  } 
+  // decelerate from maximum speed to zero
+  for (int i = 255; i >= 0; --i)
+  {
+    analogWrite(enA, i);
+    analogWrite(enB, i);
+    delay(20);
+  } 
+  // now turn off motors
+  digitalWrite(in1, LOW);
+  digitalWrite(in2, LOW);  
+  digitalWrite(in3, LOW);
+  digitalWrite(in4, LOW);  
+}
 void loop()
 {
-  Serial.print("Pulse:");
-  Serial.println(duration);
-  duration = 0;
-  delay(100);
-}
-  
-void EncoderInit()
-{
-  Direction = true;//default -> Forward  
-  pinMode(encoder0pinB,INPUT);  
-  attachInterrupt(0, wheelSpeed, CHANGE);
-}
-  
-void wheelSpeed()
-{
-  int Lstate = digitalRead(encoder0pinA);
-  if((encoder0PinALast == LOW) && Lstate==HIGH)
-  {
-    int val = digitalRead(encoder0pinB);
-    if(val == LOW && Direction)
-    {
-      Direction = false; //Reverse
-    }
-    else if(val == HIGH && !Direction)
-    {
-      Direction = true;  //Forward
-    }
-  }
-  encoder0PinALast = Lstate;
-  
-  if(!Direction)  duration++;
-  else  duration--;
+  demoOne();
+  delay(1000);
+  demoTwo();
+  delay(1000);
 }
