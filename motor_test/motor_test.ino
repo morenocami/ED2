@@ -12,12 +12,12 @@ Adafruit_BNO055 bno = Adafruit_BNO055();
 int enA = 10;
 int in1 = 9;
 int in2 = 8;
-boolean on = false, forward = true;
+boolean motorOn= false, forward = true;
 
 //// motor two
-//int enB = 5;
-//int in3 = 7;
-//int in4 = 6;
+int enB = 5;
+int in3 = 7;
+int in4 = 6;
 
 char inputButtonState;
 
@@ -26,16 +26,18 @@ void setup()
 {
 // set all the motor control pins to outputs
   pinMode(enA, OUTPUT);
-//  pinMode(enB, OUTPUT);
+  pinMode(enB, OUTPUT);
   pinMode(in1, OUTPUT);
   pinMode(in2, OUTPUT);
-//  pinMode(in3, OUTPUT);
-//  pinMode(in4, OUTPUT);
+  pinMode(in3, OUTPUT);
+  pinMode(in4, OUTPUT);
 
-  digitalWrite(in1, HIGH);
-  digitalWrite(in2, LOW);
+  digitalWrite(in1, LOW);
+  digitalWrite(in2, HIGH);
+  digitalWrite(in3, HIGH);
+  digitalWrite(in4, LOW);
 
-  pinMode(12,INPUT);         // Initialize Arduino Digital Pins 12 as input for connecting Pushbutton
+  pinMode(11,INPUT);         // Initialize Arduino Digital Pins 11 as input for connecting Pushbutton
 
 
   if(!bno.begin())
@@ -49,34 +51,49 @@ void setup()
 }
 
 void loop()
-{  
-  inputButtonState = digitalRead(12); //Read the Pushbutton state.
-
-  
+{
+  //check for button press 
+  inputButtonState = digitalRead(11); //Read the Pushbutton state.
+  //take tilt reading
   imu::Vector<3> euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
+//  //fire/read ultrasonic
+//  digitalWrite(12, LOW);
+//  delayMicroseconds(2);
+//  digitalWrite(12, HIGH);
+//  delayMicroseconds(8);
+//  digitalWrite(12, LOW);
+//  duration = pulseIn(13, HIGH, 5000);
+//  
+//  distance = (duration/2) / 20;
   
-  if(on){
+  if(motorOn){
     if(euler.y()>10){
       analogWrite(enA, 250);
+      analogWrite(enB, 250);
       delay(100);
-      forward=!forward;
     }
     else if(euler.y()<-10){
       analogWrite(enA, 50);
+      analogWrite(enB, 50);
       delay(100);
-      forward=!forward;
+    }
+    else if(euler.y()>-5 && euler.y()<5){
+      analogWrite(enA, 125);
+      analogWrite(enB, 125);
+      delay(100);
     }
   }
 
- 
-  if (inputButtonState == LOW && on){     
-    on = !on;
+  if (inputButtonState == LOW && motorOn){     
+    motorOn= !motorOn;
     analogWrite(enA, 0);
+    analogWrite(enB, 0);
     delay(100);
   } 
-  else if(inputButtonState == HIGH && !on){
-    on = !on;
+  else if(inputButtonState == HIGH && !motorOn){
+    motorOn= !motorOn;
     analogWrite(enA, 150);
+    analogWrite(enB, 150);
     delay(100);    
   }
 }
