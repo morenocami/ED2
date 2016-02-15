@@ -4,21 +4,22 @@
 #include <utility/imumaths.h>
 
 #define BNO055_SAMPLERATE_DELAY_MS (100)
+#define enA 10
+#define in1 9
+#define in2 8
+#define enB 5
+#define in3 7
+#define in4 6
+#define BNO055_SAMPLERATE_DELAY_MS (100)
+#define trig 12
+#define echo 13
+#define touchLeft 4
+#define touchRight 3
 
 Adafruit_BNO055 bno = Adafruit_BNO055();
-
-// connect motor controller pins to Arduino digital pins
-// motor one
-int enA = 10;
-int in1 = 9;
-int in2 = 8;
-boolean motorOn= false, forward = true;
-
-//// motor two
-int enB = 5;
-int in3 = 7;
-int in4 = 6;
-
+boolean motorOn= false; 
+boolean forward = true;
+int dutyCycle=0;
 char inputButtonState;
 
 
@@ -31,18 +32,17 @@ void setup()
   pinMode(in2, OUTPUT);
   pinMode(in3, OUTPUT);
   pinMode(in4, OUTPUT);
+  
+  pinMode(touchLeft,INPUT);
 
   digitalWrite(in1, LOW);
   digitalWrite(in2, HIGH);
   digitalWrite(in3, HIGH);
   digitalWrite(in4, LOW);
 
-  pinMode(11,INPUT);         // Initialize Arduino Digital Pins 11 as input for connecting Pushbutton
-
 
   if(!bno.begin())
   {
-    /* There was a problem detecting the BNO055 ... check your connections */
     //Serial.write("Ooops, no BNO055 detected ... Check your wiring or I2C ADDR!");
     while(1);
   }
@@ -50,40 +50,21 @@ void setup()
   bno.setExtCrystalUse(true);
 }
 
+///////////////////////////////////////////////////////////////////////////
 void loop()
 {
   //check for button press 
-  inputButtonState = digitalRead(11); //Read the Pushbutton state.
-  //take tilt reading
-  imu::Vector<3> euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
-//  //fire/read ultrasonic
-//  digitalWrite(12, LOW);
-//  delayMicroseconds(2);
-//  digitalWrite(12, HIGH);
-//  delayMicroseconds(8);
-//  digitalWrite(12, LOW);
-//  duration = pulseIn(13, HIGH, 5000);
-//  
-//  distance = (duration/2) / 20;
+  inputButtonState = digitalRead(touchLeft);
   
-  if(motorOn){
-    if(euler.y()>10){
-      analogWrite(enA, 250);
-      analogWrite(enB, 250);
-      delay(100);
-    }
-    else if(euler.y()<-10){
-      analogWrite(enA, 50);
-      analogWrite(enB, 50);
-      delay(100);
-    }
-    else if(euler.y()>-5 && euler.y()<5){
-      analogWrite(enA, 125);
-      analogWrite(enB, 125);
-      delay(100);
-    }
-  }
+  dutyCycle -= adjustForTilt();
+  dutyCycle -= adjustForDistance();
 
+  if(dutyCycle>=0){
+    analogWrite(enA, dutyCycle);
+    analogWrite(enB, dutyCycle);
+    delay(100);
+  }
+  
   if (inputButtonState == LOW && motorOn){     
     motorOn= !motorOn;
     analogWrite(enA, 0);
@@ -97,3 +78,41 @@ void loop()
     delay(100);    
   }
 }
+
+///////////////////////////////////////////////////////////////////////////
+int adjustForDistance(){
+  digitalWrite(trig, LOW);
+  delayMicroseconds(2);
+  digitalWrite(trig, HIGH);
+  delayMicroseconds(8);
+  digitalWrite(trig, LOW);
+  int duration = pulseIn(echo, HIGH, 5000);
+  int distance = (duration/2) / 20;
+  if(distance<5){
+    return 50;
+  }
+  else if(distance<15){
+    return 25;
+  }
+  else{
+    return 0;
+  }
+}
+
+///////////////////////////////////////////////////////////////////////////
+int adjustForTilt(){
+  imu::Vector<3> euler =
+    bno.getVector(Adafruit_BNO055::VECTOR_EULER);
+  if(euler.y()>10){
+    return 0;
+  }
+  else if(euler.y()<-10){
+    return 50;
+  }
+  else if(euler.y()>-5 && euler.y()<5){
+    analogWrite(enA, 125);
+    analogWrite(enB, 125);
+    delay(100);
+  }
+}
+
