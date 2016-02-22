@@ -55,28 +55,22 @@ void loop()
 {
   //check for button press 
   inputButtonState = digitalRead(touchLeft);
-  
-  dutyCycle -= adjustForTilt();
-  dutyCycle -= adjustForDistance();
 
-  if(dutyCycle>=0){
-    analogWrite(enA, dutyCycle);
-    analogWrite(enB, dutyCycle);
-    delay(100);
-  }
-  
   if (inputButtonState == LOW && motorOn){     
     motorOn= !motorOn;
-    analogWrite(enA, 0);
-    analogWrite(enB, 0);
-    delay(100);
+    dutyCycle = 0;
   } 
   else if(inputButtonState == HIGH && !motorOn){
     motorOn= !motorOn;
-    analogWrite(enA, 150);
-    analogWrite(enB, 150);
-    delay(100);    
+    dutyCycle = 150;
   }
+    
+  dutyCycle -= adjustForTilt();
+  dutyCycle -= adjustForDistance();
+  
+  analogWrite(enA, dutyCycle);
+  analogWrite(enB, dutyCycle);
+  delay(100);
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -87,22 +81,19 @@ int adjustForDistance(){
   delayMicroseconds(8);
   digitalWrite(trig, LOW);
   int duration = pulseIn(echo, HIGH, 5000);
-  int distance = (duration/2) / 20;
-  if(distance<5){
-    return 50;
-  }
-  else if(distance<15){
-    return 25;
-  }
-  else{
-    return 0;
-  }
+  int distance = constrain(distance, 1, 20);
+  distance = (duration/2) / 20;
+  
+  distance = map(distance,1,20,125,25);
+  return distance;
 }
 
 ///////////////////////////////////////////////////////////////////////////
 int adjustForTilt(){
-  imu::Vector<3> euler =
-    bno.getVector(Adafruit_BNO055::VECTOR_EULER);
+  imu::Vector<3> euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
+
+  
+  
   if(euler.y()>10){
     return 0;
   }
