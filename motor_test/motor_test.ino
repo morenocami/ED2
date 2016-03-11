@@ -1,4 +1,4 @@
-#include <Wire.h>
+ #include <Wire.h>
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BNO055.h>
 #include <utility/imumaths.h>
@@ -6,41 +6,37 @@
 #define BNO055_SAMPLERATE_DELAY_MS (100)
 
 Adafruit_BNO055 bno = Adafruit_BNO055();
+ // motor one
+int dir1 = 13;
+int pwm1 = 12;
 
-// connect motor controller pins to Arduino digital pins
-// motor one
-int enA = 10;
-int in1 = 9;
-int in2 = 8;
+//motor two
+int dir2 = 11;
+int pwm2 = 10;
+
 boolean motorOn= false, forward = true;
 
-//// motor two
-int enB = 5;
-int in3 = 7;
-int in4 = 6;
+//Buttons
+char rightB, leftB;
 
-char inputButtonState;
+int dutyCycle;
 
-
-void setup()
-{
-// set all the motor control pins to outputs
-  pinMode(enA, OUTPUT);
-  pinMode(enB, OUTPUT);
-  pinMode(in1, OUTPUT);
-  pinMode(in2, OUTPUT);
-  pinMode(in3, OUTPUT);
-  pinMode(in4, OUTPUT);
-
-  digitalWrite(in1, LOW);
-  digitalWrite(in2, HIGH);
-  digitalWrite(in3, HIGH);
-  digitalWrite(in4, LOW);
-
-  pinMode(11,INPUT);         // Initialize Arduino Digital Pins 11 as input for connecting Pushbutton
-
-
-  if(!bno.begin())
+void setup() {
+  // put your setup code here, to run once:
+  pinMode(dir1, OUTPUT);
+  pinMode(dir2, OUTPUT);
+  pinMode(pwm1, OUTPUT);
+  pinMode(pwm2, OUTPUT);
+  
+  // set both motors to move foward
+  digitalWrite(dir1, HIGH);
+  digitalWrite(dir2, LOW);
+  
+  //buttons
+  pinMode(7,INPUT);
+  pinMode(6,INPUT);
+  
+    if(!bno.begin())
   {
     /* There was a problem detecting the BNO055 ... check your connections */
     //Serial.write("Ooops, no BNO055 detected ... Check your wiring or I2C ADDR!");
@@ -48,52 +44,46 @@ void setup()
   }
   delay(1000);
   bno.setExtCrystalUse(true);
+  
+  Serial.begin(9600);
 }
 
-void loop()
-{
-  //check for button press 
-  inputButtonState = digitalRead(11); //Read the Pushbutton state.
-  //take tilt reading
+void loop() {
+  // put your main code here, to run repeatedly:
+  rightB = digitalRead(7);
+  leftB = digitalRead(6);
+  dutyCycle=75;
+  
   imu::Vector<3> euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
-//  //fire/read ultrasonic
-//  digitalWrite(12, LOW);
-//  delayMicroseconds(2);
-//  digitalWrite(12, HIGH);
-//  delayMicroseconds(8);
-//  digitalWrite(12, LOW);
-//  duration = pulseIn(13, HIGH, 5000);
-//  
-//  distance = (duration/2) / 20;
   
   if(motorOn){
-    if(euler.y()>10){
-      analogWrite(enA, 250);
-      analogWrite(enB, 250);
-      delay(100);
-    }
-    else if(euler.y()<-10){
-      analogWrite(enA, 50);
-      analogWrite(enB, 50);
-      delay(100);
-    }
-    else if(euler.y()>-5 && euler.y()<5){
-      analogWrite(enA, 125);
-      analogWrite(enB, 125);
-      delay(100);
-    }
-  }
+     dutyCycle = dutyCycle - map(euler.y(),-2,-30,0,60);
 
-  if (inputButtonState == LOW && motorOn){     
-    motorOn= !motorOn;
-    analogWrite(enA, 0);
-    analogWrite(enB, 0);
+//    if(distance<5){
+//      dutyCycle -=50;
+//    }
+//    else if(distance<10){
+//      dutyCycle -=25;
+//    }
+    
+    analogWrite(pwm1, dutyCycle);
+    analogWrite(pwm2, dutyCycle);
     delay(100);
-  } 
-  else if(inputButtonState == HIGH && !motorOn){
+    Serial.println(dutyCycle);
+   }
+  
+  if ((leftB == LOW || rightB == LOW) && motorOn)
+  {
     motorOn= !motorOn;
-    analogWrite(enA, 150);
-    analogWrite(enB, 150);
-    delay(100);    
+    analogWrite(pwm1, 0);
+    analogWrite(pwm2, 0);
   }
+  
+  else if((leftB == HIGH && rightB == HIGH) && !motorOn)
+  {
+    motorOn= !motorOn;
+  }
+  
+
 }
+
