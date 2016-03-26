@@ -34,8 +34,8 @@ void setup() {
   pinMode(pwm2, OUTPUT);
 
   // set both motors to move foward
-  digitalWrite(dir1, HIGH);
-  digitalWrite(dir2, LOW);
+  digitalWrite(dir2, HIGH);
+  digitalWrite(dir1, LOW);
 
   //buttons
   pinMode(lB, INPUT);
@@ -66,7 +66,14 @@ void setup() {
 }
 
 void loop() {
-
+  // put your main code here, to run repeatedly:
+  rightB = digitalRead(6);
+  leftB = digitalRead(7);
+  //base speed
+  dutyCycle=75;
+  //reading 9DOF
+  imu::Vector<3> euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
+  
   digitalWrite(trig1, LOW);
   delayMicroseconds(2);
   digitalWrite(trig1, HIGH);
@@ -76,7 +83,6 @@ void loop() {
   int left = (duration / 2) / 20;
   Serial.print("Distance Left: ");
   Serial.println(left);
-
 
   digitalWrite(trig2, LOW);
   delayMicroseconds(2);
@@ -98,26 +104,13 @@ void loop() {
   Serial.print("Distance Drop: ");
   Serial.println(drop);
   Serial.println("");
-
-//  digitalWrite(trig4, LOW);
-//  delayMicroseconds(2);
-//  digitalWrite(trig4, HIGH);
-//  delayMicroseconds(8);
-//  digitalWrite(trig4, LOW);
-//  duration = pulseIn(echo4, HIGH, 5000);
-//  int right = (duration / 2) / 20;
-//  Serial.print("Distance Right: ");
-//  Serial.println(distance);
-//  Serial.println("");
-
-  delay(300);
   
   int dropThreshHold = 100;
   if(drop>dropThreshHold){
     dutyCycle=0;
   }
   
-  int obstacleTreshHold;
+  int obstacleThreshHold = 50;
   if(right<obstacleThreshHold){
     dutyCycle = dutyCycle - map(right, 20, 100, 75, 1);    
   }
@@ -136,24 +129,16 @@ void loop() {
 
 
 
-    // put your main code here, to run repeatedly:
-    rightB = digitalRead(6);
-    leftB = digitalRead(7);
-  
-    dutyCycle=75;
-  
-    imu::Vector<3> euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
-  
+    
+    
+    //when buttons pressed, motor on
     if(motorOn){
-       dutyCycle = dutyCycle - map(euler.y(),-2,-30,0,60);
-  
-      if(distance<5){
-        dutyCycle -=50;
-      }
-      else if(distance<10){
-       dutyCycle -=25;
-      }
+      //reduce speed if there is tilt
+      dutyCycle = dutyCycle - map(euler.y(),-2,-30,0,60);
       
+      //reduce speed if obstacles ahead
+      
+      //zero speed if negative
       if(dutyCycle<0){dutyCycle=0;}
       
       analogWrite(pwm1, dutyCycle);
