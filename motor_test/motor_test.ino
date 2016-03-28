@@ -10,14 +10,14 @@
 #define pwm2 10
 #define rB 6
 #define lB 7
-#define trig1 14
-#define echo1 15
-#define trig2 16
-#define echo2 17
-#define trig3 18
-#define echo3 19
-#define trig4 20
-#define echo4 21
+#define trig1 22
+#define echo1 23
+#define trig2 24
+#define echo2 25
+#define trig3 26
+#define echo3 27
+#define trig4 28
+#define echo4 29
 
 Adafruit_BNO055 bno;
 
@@ -41,15 +41,15 @@ void setup() {
   pinMode(lB, INPUT);
   pinMode(rB, INPUT);
 
-
-  pinMode(trig1, OUTPUT);
-  pinMode(echo1, INPUT);
-  pinMode(trig2, OUTPUT);
-  pinMode(echo2, INPUT);
-  pinMode(trig3, OUTPUT);
-  pinMode(echo3, INPUT);
-  pinMode(trig4, OUTPUT);
-  pinMode(echo4, INPUT);
+//
+//  pinMode(trig1, OUTPUT);
+//  pinMode(echo1, INPUT);
+//  pinMode(trig2, OUTPUT);
+//  pinMode(echo2, INPUT);
+//  pinMode(trig3, OUTPUT);
+//  pinMode(echo3, INPUT);
+//  pinMode(trig4, OUTPUT);
+//  pinMode(echo4, INPUT);
 
   if (!bno.begin())
   {
