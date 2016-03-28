@@ -10,14 +10,14 @@
 #define pwm2 10
 #define rB 6
 #define lB 7
-#define trig1 2
-#define echo1 3
-#define trig2 4
-#define echo2 5
-#define trig3 8
-#define echo3 9
-#define trig4 A0
-#define echo4 A1
+#define trig1 14
+#define echo1 15
+#define trig2 16
+#define echo2 17
+#define trig3 18
+#define echo3 19
+#define trig4 20
+#define echo4 21
 
 Adafruit_BNO055 bno;
 
@@ -74,54 +74,65 @@ void loop() {
   //reading 9DOF
   imu::Vector<3> euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
   
-  digitalWrite(trig1, LOW);
-  delayMicroseconds(2);
-  digitalWrite(trig1, HIGH);
-  delayMicroseconds(8);
-  digitalWrite(trig1, LOW);
-  int duration = pulseIn(echo1, HIGH, 5000);
-  int left = (duration / 2) / 20;
-  Serial.print("Distance Left: ");
-  Serial.println(left);
-
-  digitalWrite(trig2, LOW);
-  delayMicroseconds(2);
-  digitalWrite(trig2, HIGH);
-  delayMicroseconds(8);
-  digitalWrite(trig3, LOW);
-  duration = pulseIn(echo2, HIGH, 5000);
-  int right = (duration / 2) / 20;
-  Serial.print("Distance Right: ");
-  Serial.println(right);
-
-  digitalWrite(trig3, LOW);
-  delayMicroseconds(2);
-  digitalWrite(trig3, HIGH);
-  delayMicroseconds(8);
-  digitalWrite(trig3, LOW);
-  duration = pulseIn(echo3, HIGH, 5000);
-  int drop = (duration / 2) / 20;
-  Serial.print("Distance Drop: ");
-  Serial.println(drop);
-  Serial.println("");
-  
-  int dropThreshHold = 100;
-  if(drop>dropThreshHold){
-    dutyCycle=0;
-  }
-  
-  int obstacleThreshHold = 50;
-  if(right<obstacleThreshHold){
-    dutyCycle = dutyCycle - map(right, 20, 100, 75, 1);    
-  }
-  else if(left<obstacleThreshHold){
-    dutyCycle = dutyCycle - map(left, 20, 100, 75, 1);    
-  }
-
-
-
-
-
+//  digitalWrite(trig1, LOW);
+//  delayMicroseconds(2);
+//  digitalWrite(trig1, HIGH);
+//  delayMicroseconds(8);
+//  digitalWrite(trig1, LOW);
+//  int duration = pulseIn(echo1, HIGH, 5000);
+//  int left = (duration / 2) / 20;
+//  Serial.print("Distance Left: ");
+//  Serial.println(left);
+//
+//  digitalWrite(trig4, LOW);
+//  delayMicroseconds(2);
+//  digitalWrite(trig4, HIGH);
+//  delayMicroseconds(8);
+//  digitalWrite(trig4, LOW);
+//  duration = pulseIn(echo2, HIGH, 5000);
+//  int right = (duration / 2) / 20;
+//  Serial.print("Distance Right: ");
+//  Serial.println(right);
+//
+//  digitalWrite(trig2, LOW);
+//  delayMicroseconds(2);
+//  digitalWrite(trig2, HIGH);
+//  delayMicroseconds(8);
+//  digitalWrite(trig2, LOW);
+//  duration = pulseIn(echo2, HIGH, 5000);
+//  int dropL = (duration / 2) / 20;
+//  Serial.print("Distance Drop: ");
+//  Serial.println(drop);
+//  Serial.println("");
+//  
+//  digitalWrite(trig3, LOW);
+//  delayMicroseconds(2);
+//  digitalWrite(trig3, HIGH);
+//  delayMicroseconds(8);
+//  digitalWrite(trig3, LOW);
+//  duration = pulseIn(echo3, HIGH, 5000);
+//  int dropR = (duration / 2) / 20;
+//  Serial.print("Distance Drop: ");
+//  Serial.println(drop);
+//  Serial.println("");
+//  
+//  int dropThreshHold = 100;
+//  if(drop>dropThreshHold){
+//    dutyCycle=0;
+//  }
+//  
+//  int obstacleThreshHold = 50;
+//  if(right<obstacleThreshHold){
+//    dutyCycle = dutyCycle - map(right, 20, 100, 75, 1);    
+//  }
+//  else if(left<obstacleThreshHold){
+//    dutyCycle = dutyCycle - map(left, 20, 100, 75, 1);    
+//  }
+//
+//
+//
+//
+//
 
 
 
@@ -139,7 +150,9 @@ void loop() {
       //reduce speed if obstacles ahead
       
       //zero speed if negative
-      if(dutyCycle<0){dutyCycle=0;}
+      if(dutyCycle<0){
+        dutyCycle=0;
+      }
       
       analogWrite(pwm1, dutyCycle);
       analogWrite(pwm2, dutyCycle);
