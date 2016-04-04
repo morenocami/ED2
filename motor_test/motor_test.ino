@@ -29,17 +29,30 @@
 
 Adafruit_BNO055 bno;
 
-boolean motorOn = false, forward = true;
+boolean motorOn = false;
 
 boolean rightB, leftB;
 int dutyCycle;
-
 int duration=0;
-int sumLeft=0;
-int sumRight=0;
-int sumDropL=0;
-int sumDropR=0;
-int count=0, count2=0;
+
+//arrays used for sensor data smoothing
+const int numReadings=10;
+int dropLs[numReadings];
+int dropRs[numReadings];
+int lefts[numReadings];
+int rights[numReadings];
+int index;
+// sum of array elements
+int sumDropL;
+int sumDropR;
+int sumLeft;
+int sumRight;
+//running average of array elements
+int dropL;
+int dropR;
+int left;
+int right;
+
 
 void setup() {
   // put your setup code here, to run once:
@@ -80,95 +93,85 @@ void setup() {
   }
 
   Serial.begin(9600);
-}
-
-void loop() {
-  // put your main code here, to run repeatedly:
-  rightB = digitalRead(6);
-  leftB = digitalRead(7);
-  //base speed
-  dutyCycle=75;
-  //reading 9DOF
-  imu::Vector<3> euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
   
+
+  //initialize all elements in all smoothing arrays to ZERO
+  for (int x = 0; x < numReadings; x++) {
+    lefts[x] = 0;
+    rights[x] = 0;
+    dropLs[x] = 0;
+    dropRs[x] = 0;
+  }
+  index = 0;
   sumLeft=0;
   sumRight=0;
   sumDropL=0;
   sumDropR=0;
-  
-  //fires ultrasonic sensors five times
-  for(count = 0; count<5; count++){
-    digitalWrite(trig1, LOW);
-    delayMicroseconds(2);
-    digitalWrite(trig1, HIGH);
-    delayMicroseconds(8);
-    digitalWrite(trig1, LOW);
-    duration = pulseIn(echo1, HIGH, 4000);
-    int dropL = (duration / 2) / 20;
-    sumDropL += dropL;
-    
-    digitalWrite(trig2, LOW);
-    delayMicroseconds(2);
-    digitalWrite(trig2, HIGH);
-    delayMicroseconds(8);
-    digitalWrite(trig2, LOW);
-    duration = pulseIn(echo2, HIGH, 4000);
-    int left = (duration / 2) / 20;
-    sumLeft += left;
-    
-    digitalWrite(trig4, LOW);
-    delayMicroseconds(2);
-    digitalWrite(trig4, HIGH);
-    delayMicroseconds(8);
-    digitalWrite(trig4, LOW);
-    duration = pulseIn(echo4, HIGH, 4000);
-    int dropR = (duration / 2) / 20;
-    sumDropR += dropR;
-    
-    digitalWrite(trig3, LOW);
-    delayMicroseconds(2);
-    digitalWrite(trig3, HIGH);
-    delayMicroseconds(8);
-    digitalWrite(trig3, LOW);
-    duration = pulseIn(echo3, HIGH, 4000);
-    int right = (duration / 2) / 20;
-    sumRight += right;
-  }
+}
 
-  //calculate average of distances
-  int dropL = sumDropL/count;
-  int dropR = sumDropR/count;
-  int left = sumLeft/count;
-  int right = sumRight/count;
-          
-  if(count2==10){
-    Serial.println("Left: ");
-    Serial.println(left);
-    Serial.println("Right: ");
-    Serial.println(right);
-//    Serial.println("dropLeft: ");
-//    Serial.println(dropL);
-//    Serial.println("dropRight: ");
-//    Serial.println(dropR);
-    Serial.println("");
-    Serial.println("");
-    count2=0;
-//    if(dropL>dropThreshHold || dropR>dropThreshHold){
-//      digitalWrite(speakerOne,HIGH);
-//      digitalWrite(speakerOne,LOW);
-//      Serial.println(dropL);
-//      Serial.println(dropR);
-//    }
-  }
-  else{
-    count2++;
-  }
+
+
+
+
+
+////////////////
+//main loop
+////////////////
+
+void loop(){
+  rightB = digitalRead(6);
+  leftB = digitalRead(7);
   
-  //if there's a drop, brake; else if there's an obsacle, reduce speed
+//base speed
+  dutyCycle=75;
+  
+//reading 9DOF
+  imu::Vector<3> euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
+  
+//sequentially fires ultrasonic sensors
+  digitalWrite(trig1, LOW);
+  delayMicroseconds(2);
+  digitalWrite(trig1, HIGH);
+  delayMicroseconds(8);
+  digitalWrite(trig1, LOW);
+  duration = pulseIn(echo1, HIGH, 4000);
+  dropLs[index] = (duration / 2) / 20;
+  
+  digitalWrite(trig4, LOW);
+  delayMicroseconds(2);
+  digitalWrite(trig4, HIGH);
+  delayMicroseconds(8);
+  digitalWrite(trig4, LOW);
+  duration = pulseIn(echo4, HIGH, 4000);
+  dropRs[index] = (duration / 2) / 20;
+  
+  digitalWrite(trig2, LOW);
+  delayMicroseconds(2);
+  digitalWrite(trig2, HIGH);
+  delayMicroseconds(8);
+  digitalWrite(trig2, LOW);
+  duration = pulseIn(echo2, HIGH, 4000);
+  lefts[index] = (duration / 2) / 20;
+  
+  digitalWrite(trig3, LOW);
+  delayMicroseconds(2);
+  digitalWrite(trig3, HIGH);
+  delayMicroseconds(8);
+  digitalWrite(trig3, LOW);
+  duration = pulseIn(echo3, HIGH, 4000);
+  rights[index] = (duration / 2) / 20;
+
+  ////////////////////////////
+  //calculate running averages
+  ////////////////////////////
+  calcRunAvgs();
+  
+  
+  //if there's a drop, brake; else if there's an obstacle, reduce speed
   if((dropL>dropThreshHold && dropL!=0) || (dropR>dropThreshHold && dropR!=0)){
     dutyCycle=0;
   }
-  else if(right<obstacleThreshHold && right!=0){
+  if(right<obstacleThreshHold && right!=0){
     dutyCycle = dutyCycle - map(right, 15, 50, 75, 1);    
   }
   else if(left<obstacleThreshHold && left!=0){
@@ -180,9 +183,7 @@ void loop() {
   if(motorOn){
     //reduce speed if there is tilt
     dutyCycle = dutyCycle - map(euler.y(),-2,-30,0,60);
-    
-    //reduce speed if obstacles ahead
-    
+        
     //zero speed if negative
     if(dutyCycle<0){
       dutyCycle=0;
@@ -190,8 +191,7 @@ void loop() {
     
     analogWrite(pwm1, dutyCycle);
     analogWrite(pwm2, dutyCycle);
-    delay(100);
-    Serial.println(dutyCycle);
+    delay(10);
   }
 
   if ((leftB == LOW || rightB == LOW) && motorOn)
@@ -205,5 +205,35 @@ void loop() {
   {
     motorOn= !motorOn;
   }
+
+  index++;
+  if(index==10)index=0;
 }
 
+
+//each for loop adds the elements of an array and sets the corresponding distance variable to an average
+void calcRunAvgs(){
+  for(int x=0; x<numReadings; x++){
+    sumDropL+=dropLs[x];
+  }
+  dropL=sumDropL/numReadings;
+  sumDropL=0;
+
+  for(int x=0; x<numReadings; x++){
+    sumDropR+=dropRs[x];
+  }
+  dropR=sumDropR/numReadings;
+  sumDropR=0;
+
+  for(int x=0; x<numReadings; x++){
+    sumLeft+=lefts[x];
+  }
+  left=sumLeft/numReadings;
+  sumLeft=0;
+
+  for(int x=0; x<numReadings; x++){
+    sumRight+=rights[x];
+  }
+  right=sumRight/numReadings;
+  sumRight=0;
+}
