@@ -24,7 +24,7 @@
 #define speakerOne 30
 #define speakerTwo 31
 //ultrasonic sensors @36degrees yields readings of about 40-50
-#define dropThreshHold 40
+#define dropThreshHold 35
 #define obstacleThreshHold 50
 
 Adafruit_BNO055 bno;
@@ -166,9 +166,11 @@ void loop(){
   ////////////////////////////
   calcRunAvgs();
   
-  
+  Serial.println(dropL);
+    Serial.println(dropR);
+    Serial.println("\n");
   //if there's a drop, brake; else if there's an obstacle, reduce speed
-  if((dropL>dropThreshHold && dropL!=0) || (dropR>dropThreshHold && dropR!=0)){
+  if((dropL>dropThreshHold) || (dropR>dropThreshHold)){
     dutyCycle=0;
   }
   if(right<obstacleThreshHold && right!=0){
@@ -237,3 +239,10 @@ void calcRunAvgs(){
   right=sumRight/numReadings;
   sumRight=0;
 }
+
+
+
+
+
+
+
