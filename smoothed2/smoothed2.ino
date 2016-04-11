@@ -21,11 +21,17 @@
 #define trig4 28
 #define echo4 29
 //speaker enable pins
-#define speakerOne 30
-#define speakerTwo 31
+#define speakerOne 8
+#define speakerTwo 45
 //ultrasonic sensors @36degrees yields readings of about 40-50
 #define dropThreshHold 35
 #define obstacleThreshHold 50
+//battery indicator LEDs and analog pin
+#define gLED 53
+#define yLED 52
+#define rLED 48
+#define batVoltage 0
+
 
 Adafruit_BNO055 bno;
 
@@ -37,28 +43,26 @@ int duration = 0;
 
 //arrays used for sensor data smoothing
 const int numReadings = 10;
+const int batReadings = 50;
 int dropLs[numReadings];
 int dropRs[numReadings];
 int lefts[numReadings];
 int rights[numReadings];
+float batLevels[batReadings];
 int index;
+int batIndex;
 // sum of array elements
 int sumDropL;
 int sumDropR;
 int sumLeft;
 int sumRight;
+float sumBattery;
 //running average of array elements
 int dropL;
 int dropR;
 int left;
 int right;
-//Battery status
-int analogPin = 0;
-int reading = 0;
-float voltageT = 0;
-#define gLED 32
-#define yLED 33
-#define rLED 34
+float batteryLevel;
 
 
 
@@ -88,6 +92,7 @@ void setup() {
   pinMode(echo4, INPUT);
 
   pinMode(speakerOne, OUTPUT);
+  pinMode(speakerTwo, OUTPUT);
 
   if (!bno.begin())
   {
@@ -110,11 +115,16 @@ void setup() {
     dropLs[x] = 0;
     dropRs[x] = 0;
   }
+  for (int x = 0; x < batReadings; x++) {
+    batLevels[x] = 0;
+  }
   index = 0;
+  batIndex = 0;
   sumLeft = 0;
   sumRight = 0;
   sumDropL = 0;
   sumDropR = 0;
+  sumBattery = 0;
 
   //Battery status LED
   pinMode(gLED, OUTPUT);
@@ -132,11 +142,6 @@ void setup() {
 ////////////////
 
 void loop() {
-  //Battery vars
-  reading = 0;
-  float voltage = 0;
-  float voltageBat = 0;
-
   rightB = digitalRead(6);
   leftB = digitalRead(7);
 
@@ -179,98 +184,85 @@ void loop() {
   duration = pulseIn(echo3, HIGH, 4000);
   rights[index] = (duration / 2) / 20;
 
+  batLevels[batIndex] = analogRead(batVoltage) * (5.0 / 1023.0) - 0.29;
+
   ////////////////////////////
   //calculate running averages
   ////////////////////////////
   calcRunAvgs();
 
-  Serial.println(dropL);
-  Serial.println(dropR);
-  Serial.println("\n");
-  //if there's a drop, brake; else if there's an obstacle, reduce speed
+  //if there's a drop, brake; if there's an obstacle, reduce speed
   if ((dropL > dropThreshHold) || (dropR > dropThreshHold)) {
     dutyCycle = 0;
   }
   if (right < obstacleThreshHold && right != 0) {
     dutyCycle = dutyCycle - map(right, 15, 50, 75, 1);
-
+    Serial.println(right);
+    Serial.println("");
+    if(right<20) digitalWrite(speakerOne,HIGH);
+    delay(50);
   }
   else if (left < obstacleThreshHold && left != 0) {
     dutyCycle = dutyCycle - map(left, 15, 50, 75, 1);
-
+    Serial.println(left);
+    Serial.println("");
+    if(left<20) digitalWrite(speakerOne,HIGH);
+    delay(50);
   }
+  else digitalWrite(speakerOne,LOW);
 
 
-  //when buttons pressed, motor on
+  /////////////////////////////////
+  /////////////////////////////////
   if (motorOn) {
     //reduce speed if there is tilt
-    dutyCycle = dutyCycle - map(euler.y(), -2, -30, 0, 60);
-
+    dutyCycle = dutyCycle - map(euler.y(), -20, 30, -30, 60);
+    
     //zero speed if negative
     if (dutyCycle < 0) {
       dutyCycle = 0;
     }
-
+    
     analogWrite(pwm1, dutyCycle);
     analogWrite(pwm2, dutyCycle);
-
     delay(10);
   }
-
-  if ((leftB == LOW || rightB == LOW) && motorOn)
-  {
+  //motor BRAKES if either button not pressed
+  if ((leftB == LOW || rightB == LOW) && motorOn){
     motorOn = !motorOn;
     analogWrite(pwm1, 0);
     analogWrite(pwm2, 0);
   }
-
-  else if ((leftB == HIGH && rightB == HIGH) && !motorOn)
-  {
+  else if ((leftB == HIGH && rightB == HIGH) && !motorOn){
     motorOn = !motorOn;
   }
 
-  index++;
-  if (index == 10)index = 0;
-
 
   //Battery Status
-  for (int i = 0; i < 10; i++)
-  {
-
-    reading = analogRead(analogPin);
-    voltage = reading * (5.0 / 1023.0);
-    voltage = voltage - 0.29; // Differnce error
-    voltageT += voltage;
-  }
-  voltageBat = 0;
-  voltageBat = voltageT / 10;
-  voltageT = 0;
-  Serial.println(voltageBat);
-  delay(200);
-  //Battery LED Status
-  Serial.println(voltageBat);
-  if (voltageBat > 2.75) //11.5v+
+  if (batteryLevel > 2.40) //about 11.5v
   {
     digitalWrite(gLED, HIGH);
     digitalWrite(yLED, LOW);
     digitalWrite(rLED, LOW);
-    Serial.println("green");
   }
-  else if (voltageBat <= 2.75 && voltageBat > 2.69) //11.5v-10.5v
+  else if (batteryLevel > 2.36 && batteryLevel <= 2.40) //about 10.5v to 11.5v
   {
     digitalWrite(gLED, LOW);
     digitalWrite(yLED, HIGH);
-    digitalWrite(rLED, LOW);
-    Serial.println("yellow");
+    digitalWrite(rLED, LOW); 
   }
-  else//10.5v-
+  else//about 10.5v
   {
     digitalWrite(gLED, LOW);
     digitalWrite(yLED, LOW);
     digitalWrite(rLED, HIGH);
-    Serial.println("red");
   }
 
+  //increment array access index
+  index++;
+  batIndex++;
+  if(index==numReadings)index=0;
+  if(batIndex==batReadings)batIndex=0;
 }
 
 
@@ -299,13 +291,19 @@ void calcRunAvgs() {
   }
   right = sumRight / numReadings;
   sumRight = 0;
+
+  for (int x = 0; x < batReadings; x++) {
+    sumBattery += batLevels[x];
+  }
+  batteryLevel = sumBattery / batReadings;
+  sumBattery = 0;
 }
 
 //Mapping function for floats
-float fmap(float x, float in_min, float in_max, float out_min, float out_max)
-{
-  return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
-}
+//float fmap(float x, float in_min, float in_max, float out_min, float out_max)
+//{
+//  return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+//}
 
 
 
