@@ -22,7 +22,7 @@
 #define echo4 29
 //speaker enable pins
 #define speakerOne 8
-#define speakerTwo 45
+#define speakerTwo 9
 //ultrasonic sensors @36degrees yields readings of about 40-50
 #define dropThreshHold 35
 #define obstacleThreshHold 50
@@ -42,7 +42,7 @@ int dutyCycle;
 int duration = 0;
 
 //arrays used for sensor data smoothing
-const int numReadings = 10;
+const int numReadings = 20;
 const int batReadings = 50;
 int dropLs[numReadings];
 int dropRs[numReadings];
@@ -194,22 +194,23 @@ void loop() {
   //if there's a drop, brake; if there's an obstacle, reduce speed
   if ((dropL > dropThreshHold) || (dropR > dropThreshHold)) {
     dutyCycle = 0;
+    digitalWrite(speakerTwo,HIGH);
+    delay(50);
   }
   if (right < obstacleThreshHold && right != 0) {
     dutyCycle = dutyCycle - map(right, 15, 50, 75, 1);
-    Serial.println(right);
-    Serial.println("");
     if(right<20) digitalWrite(speakerOne,HIGH);
     delay(50);
   }
   else if (left < obstacleThreshHold && left != 0) {
     dutyCycle = dutyCycle - map(left, 15, 50, 75, 1);
-    Serial.println(left);
-    Serial.println("");
     if(left<20) digitalWrite(speakerOne,HIGH);
     delay(50);
   }
-  else digitalWrite(speakerOne,LOW);
+  else{
+    digitalWrite(speakerOne,LOW);
+    digitalWrite(speakerTwo,LOW);
+  }
 
 
   /////////////////////////////////
