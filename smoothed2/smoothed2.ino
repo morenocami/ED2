@@ -11,7 +11,7 @@
 #define pwm2 10
 #define rB 6
 #define lB 7
-//pins for the four ultrasonics (22-29)
+//pins for the five ultrasonics (22-31)
 #define trig1 22
 #define echo1 23
 #define trig2 24
@@ -20,6 +20,9 @@
 #define echo3 27
 #define trig4 28
 #define echo4 29
+#define trig5 30
+#define echo5 31
+
 //speaker enable pins
 #define speakerOne 8
 #define speakerTwo 9
@@ -42,12 +45,13 @@ int dutyCycle;
 int duration = 0;
 
 //arrays used for sensor data smoothing
-const int numReadings = 20;
+const int numReadings = 50;
 const int batReadings = 50;
 int dropLs[numReadings];
 int dropRs[numReadings];
 int lefts[numReadings];
 int rights[numReadings];
+int faces[numReadings];
 float batLevels[batReadings];
 int index;
 int batIndex;
@@ -56,12 +60,14 @@ int sumDropL;
 int sumDropR;
 int sumLeft;
 int sumRight;
+int sumFace;
 float sumBattery;
 //running average of array elements
 int dropL;
 int dropR;
 int left;
 int right;
+int face;
 float batteryLevel;
 
 
@@ -90,6 +96,8 @@ void setup() {
   pinMode(echo3, INPUT);
   pinMode(trig4, OUTPUT);
   pinMode(echo4, INPUT);
+  pinMode(trig5, OUTPUT);
+  pinMode(echo5, INPUT);
 
   pinMode(speakerOne, OUTPUT);
   pinMode(speakerTwo, OUTPUT);
@@ -124,12 +132,17 @@ void setup() {
   sumRight = 0;
   sumDropL = 0;
   sumDropR = 0;
+  sumFace = 0;
   sumBattery = 0;
 
   //Battery status LED
   pinMode(gLED, OUTPUT);
   pinMode(yLED, OUTPUT);
   pinMode(rLED, OUTPUT);
+  
+  digitalWrite(speakerTwo, HIGH);
+  delay(20);
+  digitalWrite(speakerTwo, LOW);
 }
 
 
@@ -152,12 +165,20 @@ void loop() {
   imu::Vector<3> euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
 
   //sequentially fires ultrasonic sensors
+  digitalWrite(trig5, LOW);
+  delayMicroseconds(2);
+  digitalWrite(trig5, HIGH);
+  delayMicroseconds(8);
+  digitalWrite(trig5, LOW);
+  duration = pulseIn(echo5, HIGH, 6000);
+  faces[index] = (duration / 2) / 20;
+  
   digitalWrite(trig1, LOW);
   delayMicroseconds(2);
   digitalWrite(trig1, HIGH);
   delayMicroseconds(8);
   digitalWrite(trig1, LOW);
-  duration = pulseIn(echo1, HIGH, 4000);
+  duration = pulseIn(echo1, HIGH, 6000);
   dropLs[index] = (duration / 2) / 20;
 
   digitalWrite(trig4, LOW);
@@ -165,7 +186,7 @@ void loop() {
   digitalWrite(trig4, HIGH);
   delayMicroseconds(8);
   digitalWrite(trig4, LOW);
-  duration = pulseIn(echo4, HIGH, 4000);
+  duration = pulseIn(echo4, HIGH, 6000);
   dropRs[index] = (duration / 2) / 20;
 
   digitalWrite(trig2, LOW);
@@ -173,7 +194,7 @@ void loop() {
   digitalWrite(trig2, HIGH);
   delayMicroseconds(8);
   digitalWrite(trig2, LOW);
-  duration = pulseIn(echo2, HIGH, 4000);
+  duration = pulseIn(echo2, HIGH, 6000);
   lefts[index] = (duration / 2) / 20;
 
   digitalWrite(trig3, LOW);
@@ -181,7 +202,7 @@ void loop() {
   digitalWrite(trig3, HIGH);
   delayMicroseconds(8);
   digitalWrite(trig3, LOW);
-  duration = pulseIn(echo3, HIGH, 4000);
+  duration = pulseIn(echo3, HIGH, 6000);
   rights[index] = (duration / 2) / 20;
 
   batLevels[batIndex] = analogRead(batVoltage) * (5.0 / 1023.0) - 0.29;
@@ -194,25 +215,32 @@ void loop() {
   //if there's a drop, brake; if there's an obstacle, reduce speed
   if ((dropL > dropThreshHold) || (dropR > dropThreshHold)) {
     dutyCycle = 0;
-    digitalWrite(speakerTwo,HIGH);
-    delay(50);
   }
   if (right < obstacleThreshHold && right != 0) {
     dutyCycle = dutyCycle - map(right, 15, 50, 75, 1);
     if(right<20) digitalWrite(speakerOne,HIGH);
-    delay(50);
+    delay(20);
   }
   else if (left < obstacleThreshHold && left != 0) {
     dutyCycle = dutyCycle - map(left, 15, 50, 75, 1);
     if(left<20) digitalWrite(speakerOne,HIGH);
-    delay(50);
+    delay(20);
   }
   else{
     digitalWrite(speakerOne,LOW);
-    digitalWrite(speakerTwo,LOW);
   }
-
-
+  
+  //User tracking ultrasonic
+  if(face>=90 && face<=150)
+  {
+    dutyCycle = dutyCycle - map(face, 80, 150, 1, 75);
+  }
+  else if(face>150 || face==0)
+  {
+    dutyCycle=0;
+  }
+ 
+  
   /////////////////////////////////
   /////////////////////////////////
   if (motorOn) {
@@ -270,6 +298,12 @@ void loop() {
 //each for loop adds the elements of an array and sets the corresponding distance variable to an average
 void calcRunAvgs() {
   for (int x = 0; x < numReadings; x++) {
+    sumFace += faces[x];
+  }
+  face = sumFace / numReadings;
+  sumFace = 0;
+  
+  for (int x = 0; x < numReadings; x++) {
     sumDropL += dropLs[x];
   }
   dropL = sumDropL / numReadings;
@@ -299,15 +333,3 @@ void calcRunAvgs() {
   batteryLevel = sumBattery / batReadings;
   sumBattery = 0;
 }
-
-//Mapping function for floats
-//float fmap(float x, float in_min, float in_max, float out_min, float out_max)
-//{
-//  return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
-//}
-
-
-
-
-
-
