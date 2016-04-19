@@ -27,34 +27,37 @@
 #define speakerOne 8
 #define speakerTwo 9
 //ultrasonic sensors @36degrees yields readings of about 40-50
-#define dropThreshHold 35
-#define obstacleThreshHold 50
+#define dropThreshHold 33
+#define obstacleThreshHold 150
 //battery indicator LEDs and analog pin
 #define gLED 53
 #define yLED 52
 #define rLED 48
-#define batVoltage 0
+#define batVoltagePin 0
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 Adafruit_BNO055 bno;
 
 boolean motorOn = false;
-
 boolean rightB, leftB;
 int dutyCycle;
 int duration = 0;
 
 //arrays used for sensor data smoothing
-const int numReadings = 50;
-const int batReadings = 50;
-int dropLs[numReadings];
-int dropRs[numReadings];
-int lefts[numReadings];
-int rights[numReadings];
-int faces[numReadings];
-float batLevels[batReadings];
-int index;
-int batIndex;
+const int lowAveraging = 5;
+const int midAveraging = 25;
+const int highAveraging = 50;
+int dropLs[lowAveraging];
+int dropRs[lowAveraging];
+int lefts[midAveraging];
+int rights[midAveraging];
+int faces[midAveraging];
+float batLevels[highAveraging];
+int lowIndex;
+int midIndex;
+int highIndex;
 // sum of array elements
 int sumDropL;
 int sumDropR;
@@ -71,6 +74,8 @@ int face;
 float batteryLevel;
 
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void setup() {
   // put your setup code here, to run once:
@@ -78,7 +83,6 @@ void setup() {
   pinMode(dir2, OUTPUT);
   pinMode(pwm1, OUTPUT);
   pinMode(pwm2, OUTPUT);
-
   // set both motors to move foward
   digitalWrite(dir2, HIGH);
   digitalWrite(dir1, LOW);
@@ -86,8 +90,7 @@ void setup() {
   //buttons
   pinMode(lB, INPUT);
   pinMode(rB, INPUT);
-
-
+  //ultrasonic sensors
   pinMode(trig1, OUTPUT);
   pinMode(echo1, INPUT);
   pinMode(trig2, OUTPUT);
@@ -98,12 +101,12 @@ void setup() {
   pinMode(echo4, INPUT);
   pinMode(trig5, OUTPUT);
   pinMode(echo5, INPUT);
-
+  //audio feedback modules
   pinMode(speakerOne, OUTPUT);
   pinMode(speakerTwo, OUTPUT);
 
-  if (!bno.begin())
-  {
+  //BNO055 setup
+  if (!bno.begin()) {
     /* There was a problem detecting the BNO055 ... check your connections */
     Serial.write("Ooops, no BNO055 detected ... Check your wiring or I2C ADDR!");
   }
@@ -112,22 +115,24 @@ void setup() {
     delay(1000);
     bno.setExtCrystalUse(true);
   }
-
   Serial.begin(9600);
 
-
   //initialize all elements in all smoothing arrays to ZERO
-  for (int x = 0; x < numReadings; x++) {
-    lefts[x] = 0;
-    rights[x] = 0;
+  for (int x = 0; x < lowAveraging; x++) {
     dropLs[x] = 0;
     dropRs[x] = 0;
   }
-  for (int x = 0; x < batReadings; x++) {
+  for (int x = 0; x < midAveraging; x++) {
+    faces[x] = 0;
+    lefts[x] = 0;
+    rights[x] = 0;
+  }
+  for (int x = 0; x < highAveraging; x++) {
     batLevels[x] = 0;
   }
-  index = 0;
-  batIndex = 0;
+  lowIndex = 0;
+  midIndex = 0;
+  highIndex = 0;
   sumLeft = 0;
   sumRight = 0;
   sumDropL = 0;
@@ -139,7 +144,8 @@ void setup() {
   pinMode(gLED, OUTPUT);
   pinMode(yLED, OUTPUT);
   pinMode(rLED, OUTPUT);
-  
+
+  //startup sound
   digitalWrite(speakerTwo, HIGH);
   delay(20);
   digitalWrite(speakerTwo, LOW);
@@ -150,9 +156,8 @@ void setup() {
 
 
 
-////////////////
-//main loop
-////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void loop() {
   rightB = digitalRead(6);
@@ -165,84 +170,93 @@ void loop() {
   imu::Vector<3> euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
 
   //sequentially fires ultrasonic sensors
+  digitalWrite(trig2, LOW);
+  delayMicroseconds(2);
+  digitalWrite(trig2, HIGH);
+  delayMicroseconds(8);
+  digitalWrite(trig2, LOW);
+  duration = pulseIn(echo2, HIGH, 9000);
+  lefts[midIndex] = (duration / 2) / 20;
+  
+  digitalWrite(trig4, LOW);
+  delayMicroseconds(2);
+  digitalWrite(trig4, HIGH);
+  delayMicroseconds(8);
+  digitalWrite(trig4, LOW);
+  duration = pulseIn(echo4, HIGH, 3000);
+  dropRs[lowIndex] = 1;//(duration / 2) / 20;
+  
   digitalWrite(trig5, LOW);
   delayMicroseconds(2);
   digitalWrite(trig5, HIGH);
   delayMicroseconds(8);
   digitalWrite(trig5, LOW);
-  duration = pulseIn(echo5, HIGH, 6000);
-  faces[index] = (duration / 2) / 20;
+  duration = pulseIn(echo5, HIGH, 5000);
+  faces[midIndex] = (duration / 2) / 20;
+  
+  digitalWrite(trig3, LOW);
+  delayMicroseconds(2);
+  digitalWrite(trig3, HIGH);
+  delayMicroseconds(8);
+  digitalWrite(trig3, LOW);
+  duration = pulseIn(echo3, HIGH, 9000);
+  rights[midIndex] = (duration / 2) / 20;
   
   digitalWrite(trig1, LOW);
   delayMicroseconds(2);
   digitalWrite(trig1, HIGH);
   delayMicroseconds(8);
   digitalWrite(trig1, LOW);
-  duration = pulseIn(echo1, HIGH, 6000);
-  dropLs[index] = (duration / 2) / 20;
+  duration = pulseIn(echo1, HIGH, 3000);
+  dropLs[lowIndex] = (duration / 2) / 20;
 
-  digitalWrite(trig4, LOW);
-  delayMicroseconds(2);
-  digitalWrite(trig4, HIGH);
-  delayMicroseconds(8);
-  digitalWrite(trig4, LOW);
-  duration = pulseIn(echo4, HIGH, 6000);
-  dropRs[index] = (duration / 2) / 20;
+  batLevels[highIndex] = analogRead(batVoltagePin) * (5.0 / 1023.0) - 0.29;
 
-  digitalWrite(trig2, LOW);
-  delayMicroseconds(2);
-  digitalWrite(trig2, HIGH);
-  delayMicroseconds(8);
-  digitalWrite(trig2, LOW);
-  duration = pulseIn(echo2, HIGH, 6000);
-  lefts[index] = (duration / 2) / 20;
 
-  digitalWrite(trig3, LOW);
-  delayMicroseconds(2);
-  digitalWrite(trig3, HIGH);
-  delayMicroseconds(8);
-  digitalWrite(trig3, LOW);
-  duration = pulseIn(echo3, HIGH, 6000);
-  rights[index] = (duration / 2) / 20;
 
-  batLevels[batIndex] = analogRead(batVoltage) * (5.0 / 1023.0) - 0.29;
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  ////////////////////////////
-  //calculate running averages
-  ////////////////////////////
   calcRunAvgs();
-
-  //if there's a drop, brake; if there's an obstacle, reduce speed
-  if ((dropL > dropThreshHold) || (dropR > dropThreshHold)) {
+  
+  //if there's a drop, brake
+  if (dropL > dropThreshHold || dropR > dropThreshHold || dropR==0 || dropL==0) {
     dutyCycle = 0;
   }
-  if (right < obstacleThreshHold && right != 0) {
-    dutyCycle = dutyCycle - map(right, 15, 50, 75, 1);
-    if(right<20) digitalWrite(speakerOne,HIGH);
-    delay(20);
-  }
-  else if (left < obstacleThreshHold && left != 0) {
-    dutyCycle = dutyCycle - map(left, 15, 50, 75, 1);
-    if(left<20) digitalWrite(speakerOne,HIGH);
-    delay(20);
-  }
+  
+  //if there's an obstacle, reduce speed
+  if(right<30 || left <30){}
   else{
+    if (right < obstacleThreshHold) {
+      dutyCycle = dutyCycle - map(right, 30, obstacleThreshHold, 75, 1);
+      if(right<50) digitalWrite(speakerOne,HIGH);
+    }
+    else if(left < obstacleThreshHold) {
+      dutyCycle = dutyCycle - map(left, 30, obstacleThreshHold, 75, 1);
+      if(left<50) digitalWrite(speakerOne,HIGH);
+    }
+  }
+  
+  if(left>obstacleThreshHold || right>obstacleThreshHold){
     digitalWrite(speakerOne,LOW);
   }
   
   //User tracking ultrasonic
-  if(face>=90 && face<=150)
-  {
-    dutyCycle = dutyCycle - map(face, 80, 150, 1, 75);
+  if(face>=90 && face<=150){
+    dutyCycle = dutyCycle - map(face, 80, 150, 1, 50);
   }
-  else if(face>150 || face==0)
-  {
+  else if(face>150 || face==0){
     dutyCycle=0;
   }
- 
+
+
+
+
+
+
   
-  /////////////////////////////////
-  /////////////////////////////////
+  ///////////////////////////////////////////////////////////////////////////////////////////////////////////
+  //
   if (motorOn) {
     //reduce speed if there is tilt
     dutyCycle = dutyCycle - map(euler.y(), -20, 30, -30, 60);
@@ -254,7 +268,6 @@ void loop() {
     
     analogWrite(pwm1, dutyCycle);
     analogWrite(pwm2, dutyCycle);
-    delay(10);
   }
   //motor BRAKES if either button not pressed
   if ((leftB == LOW || rightB == LOW) && motorOn){
@@ -265,6 +278,8 @@ void loop() {
   else if ((leftB == HIGH && rightB == HIGH) && !motorOn){
     motorOn = !motorOn;
   }
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
   //Battery Status
@@ -287,49 +302,54 @@ void loop() {
     digitalWrite(rLED, HIGH);
   }
 
-  //increment array access index
-  index++;
-  batIndex++;
-  if(index==numReadings)index=0;
-  if(batIndex==batReadings)batIndex=0;
+  //increment array access indexes
+  lowIndex++;
+  midIndex++;
+  highIndex++;
+  if(lowIndex==lowAveraging)   lowIndex=0;
+  if(midIndex==midAveraging)   midIndex=0;
+  if(highIndex==highAveraging) highIndex=0;
 }
 
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //each for loop adds the elements of an array and sets the corresponding distance variable to an average
+
 void calcRunAvgs() {
-  for (int x = 0; x < numReadings; x++) {
+  for (int x = 0; x < midAveraging; x++) {
     sumFace += faces[x];
   }
-  face = sumFace / numReadings;
+  face = sumFace / midAveraging;
   sumFace = 0;
   
-  for (int x = 0; x < numReadings; x++) {
+  for (int x = 0; x < lowAveraging; x++) {
     sumDropL += dropLs[x];
   }
-  dropL = sumDropL / numReadings;
+  dropL = sumDropL / lowAveraging;
   sumDropL = 0;
 
-  for (int x = 0; x < numReadings; x++) {
+  for (int x = 0; x < lowAveraging; x++) {
     sumDropR += dropRs[x];
   }
-  dropR = sumDropR / numReadings;
+  dropR = sumDropR / lowAveraging;
   sumDropR = 0;
 
-  for (int x = 0; x < numReadings; x++) {
+  for (int x = 0; x < midAveraging; x++) {
     sumLeft += lefts[x];
   }
-  left = sumLeft / numReadings;
+  left = sumLeft / midAveraging;
   sumLeft = 0;
 
-  for (int x = 0; x < numReadings; x++) {
+  for (int x = 0; x < midAveraging; x++) {
     sumRight += rights[x];
   }
-  right = sumRight / numReadings;
+  right = sumRight / midAveraging;
   sumRight = 0;
 
-  for (int x = 0; x < batReadings; x++) {
+  for (int x = 0; x < highAveraging; x++) {
     sumBattery += batLevels[x];
   }
-  batteryLevel = sumBattery / batReadings;
+  batteryLevel = sumBattery / highAveraging;
   sumBattery = 0;
 }

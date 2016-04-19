@@ -1,98 +1,61 @@
-#define dir1 13
-#define pwm1 12
-#define dir2 11
-#define pwm2 10
-#define rB 6
-#define lB 7
-#define trig1 22
-#define echo1 23
-#define trig2 24
-#define echo2 25
-#define trig3 26
-#define echo3 27
-#define trig4 28
-#define echo4 29
-int sumLeft=0;
-int sumRight=0;
-int sumDropL=0;
-int sumDropR=0;
-int count=0;
+#define trig 22
+#define echo 23
 
+
+
+//arrays used for sensor data smoothing
+const int lowAveraging = 5;
+int dropLs[lowAveraging];
+int lowIndex;
+int sumDropL;
+
+//running average of array elements
+int dropL;
 
 void setup() {
-  pinMode(trig1, OUTPUT);
-  pinMode(echo1, INPUT);
-  pinMode(trig2, OUTPUT);
-  pinMode(echo2, INPUT);
-  pinMode(trig3, OUTPUT);
-  pinMode(echo3, INPUT);
-  pinMode(trig4, OUTPUT);
-  pinMode(echo4, INPUT);
-
+  pinMode(trig, OUTPUT);
+  pinMode(echo, INPUT);
+  for (int x = 0; x < lowAveraging; x++) {
+    dropLs[x] = 0;
+  }
+  lowIndex = 0;
+  sumDropL = 0;
+  
   Serial.begin(9600);
 }
 
+int duration = 0;
+
+
+
 void loop() {
-  
-  digitalWrite(trig1, LOW);
+  digitalWrite(trig, LOW);
   delayMicroseconds(2);
-  digitalWrite(trig1, HIGH);
+  digitalWrite(trig, HIGH);
   delayMicroseconds(8);
-  digitalWrite(trig1, LOW);
-  int duration = pulseIn(echo1, HIGH, 4000);
-  int left = (duration / 2) / 20;
-  sumLeft += left;
+  digitalWrite(trig, LOW);
+  duration = pulseIn(echo, HIGH, 3000);
+  dropLs[lowIndex] = (duration / 2) / 20;
   
+  calcRunAvgs();
+  
+  delay(10);
+  Serial.print("Drop left: ");
+  Serial.println(dropL);
+  Serial.print("\n\n\n\n\n");
+  delay(10);
 
-  digitalWrite(trig4, LOW);
-  delayMicroseconds(2);
-  digitalWrite(trig4, HIGH);
-  delayMicroseconds(8);
-  digitalWrite(trig4, LOW);
-  duration = pulseIn(echo4, HIGH, 4000);
-  int right = (duration / 2) / 20;
-  sumRight += right;
-  
+  //increment array access indexes
+  lowIndex++;
+  if(lowIndex==lowAveraging)   lowIndex=0;
+}
 
-  digitalWrite(trig2, LOW);
-  delayMicroseconds(2);
-  digitalWrite(trig2, HIGH);
-  delayMicroseconds(8);
-  digitalWrite(trig2, LOW);
-  duration = pulseIn(echo2, HIGH, 4000);
-  int dropL = (duration / 2) / 20;
-  sumDropL += dropL;
 
-  
-  digitalWrite(trig3, LOW);
-  delayMicroseconds(2);
-  digitalWrite(trig3, HIGH);
-  delayMicroseconds(8);
-  digitalWrite(trig3, LOW);
-  duration = pulseIn(echo3, HIGH, 4000);
-  int dropR = (duration / 2) / 20;
-  sumDropR += dropR;
-  
-  count++;
-  if(count==5){
-    sumLeft=sumLeft/5;
-    sumRight=sumRight/5;
-    sumDropL = sumDropL/5;
-    sumDropR = sumDropR/5;
-    Serial.println("Left: ");
-    Serial.println(sumLeft);
-    Serial.println("DropLeft: ");
-    Serial.println(sumDropL);
-    Serial.println("DropRight: ");
-    Serial.println(sumDropR);
-    Serial.println("Right: ");
-    Serial.println(sumRight);
-    Serial.println("");
-    count=0;
-    sumLeft=0;
-    sumRight=0;
-    sumDropL=0;
-    sumDropR=0;
+
+void calcRunAvgs() {
+  for (int x = 0; x < lowAveraging; x++) {
+    sumDropL += dropLs[x];
   }
-  delay(1000);
+  dropL = sumDropL / lowAveraging;
+  sumDropL = 0;
 }
