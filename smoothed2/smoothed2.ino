@@ -24,8 +24,8 @@
 #define echo5 31
 
 //speaker enable pins
-#define speakerOne 8
-#define speakerTwo 9
+#define speakerObstacle 8 //obstacle alert
+#define speakerIntro 9 //intro
 //ultrasonic sensors @36degrees yields readings of about 40-50
 #define dropThreshHold 33
 #define obstacleThreshHold 150
@@ -38,7 +38,7 @@
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-Adafruit_BNO055 bno;
+Adafruit_BNO055 bno = Adafruit_BNO055();
 
 boolean motorOn = false;
 boolean rightB, leftB;
@@ -53,7 +53,7 @@ int dropLs[lowAveraging];
 int dropRs[lowAveraging];
 int lefts[midAveraging];
 int rights[midAveraging];
-int faces[midAveraging];
+int faces[lowAveraging];
 float batLevels[highAveraging];
 int lowIndex;
 int midIndex;
@@ -102,28 +102,26 @@ void setup() {
   pinMode(trig5, OUTPUT);
   pinMode(echo5, INPUT);
   //audio feedback modules
-  pinMode(speakerOne, OUTPUT);
-  pinMode(speakerTwo, OUTPUT);
+  pinMode(speakerObstacle, OUTPUT);
+  pinMode(speakerIntro, OUTPUT);
 
   //BNO055 setup
   if (!bno.begin()) {
     /* There was a problem detecting the BNO055 ... check your connections */
     Serial.write("Ooops, no BNO055 detected ... Check your wiring or I2C ADDR!");
   }
-  else {
-    bno = Adafruit_BNO055();
-    delay(1000);
-    bno.setExtCrystalUse(true);
-  }
+  delay(1000);
+  bno.setExtCrystalUse(true);
+  
   Serial.begin(9600);
 
   //initialize all elements in all smoothing arrays to ZERO
   for (int x = 0; x < lowAveraging; x++) {
+    faces[x] = 0;
     dropLs[x] = 0;
     dropRs[x] = 0;
   }
   for (int x = 0; x < midAveraging; x++) {
-    faces[x] = 0;
     lefts[x] = 0;
     rights[x] = 0;
   }
@@ -146,9 +144,9 @@ void setup() {
   pinMode(rLED, OUTPUT);
 
   //startup sound
-  digitalWrite(speakerTwo, HIGH);
-  delay(20);
-  digitalWrite(speakerTwo, LOW);
+  digitalWrite(speakerIntro, HIGH);
+  delay(3000);
+  digitalWrite(speakerIntro, LOW);
 }
 
 
@@ -184,7 +182,7 @@ void loop() {
   delayMicroseconds(8);
   digitalWrite(trig4, LOW);
   duration = pulseIn(echo4, HIGH, 3000);
-  dropRs[lowIndex] = 1;//(duration / 2) / 20;
+  dropRs[lowIndex] = (duration / 2) / 20;
   
   digitalWrite(trig5, LOW);
   delayMicroseconds(2);
@@ -192,7 +190,7 @@ void loop() {
   delayMicroseconds(8);
   digitalWrite(trig5, LOW);
   duration = pulseIn(echo5, HIGH, 5000);
-  faces[midIndex] = (duration / 2) / 20;
+  faces[lowIndex] = (duration / 2) / 20;
   
   digitalWrite(trig3, LOW);
   delayMicroseconds(2);
@@ -229,27 +227,28 @@ void loop() {
   else{
     if (right < obstacleThreshHold) {
       dutyCycle = dutyCycle - map(right, 30, obstacleThreshHold, 75, 1);
-      if(right<50) digitalWrite(speakerOne,HIGH);
+      if(right<50) digitalWrite(speakerObstacle,HIGH);
     }
     else if(left < obstacleThreshHold) {
       dutyCycle = dutyCycle - map(left, 30, obstacleThreshHold, 75, 1);
-      if(left<50) digitalWrite(speakerOne,HIGH);
+      if(left<50) digitalWrite(speakerObstacle,HIGH);
     }
   }
   
-  if(left>obstacleThreshHold || right>obstacleThreshHold){
-    digitalWrite(speakerOne,LOW);
+  if(left>80 || right>80){
+    digitalWrite(speakerObstacle,LOW);
   }
   
   //User tracking ultrasonic
-  if(face>=90 && face<=150){
-    dutyCycle = dutyCycle - map(face, 80, 150, 1, 50);
+  if(face>=50 && face<=100){
+    dutyCycle = dutyCycle - map(face, 50, 100, 1, 75);
   }
-  else if(face>150 || face==0){
+  else if(face>100){
     dutyCycle=0;
   }
 
 
+    Serial.println(face);
 
 
 
@@ -309,6 +308,7 @@ void loop() {
   if(lowIndex==lowAveraging)   lowIndex=0;
   if(midIndex==midAveraging)   midIndex=0;
   if(highIndex==highAveraging) highIndex=0;
+
 }
 
 
@@ -317,10 +317,10 @@ void loop() {
 //each for loop adds the elements of an array and sets the corresponding distance variable to an average
 
 void calcRunAvgs() {
-  for (int x = 0; x < midAveraging; x++) {
+  for (int x = 0; x < lowAveraging; x++) {
     sumFace += faces[x];
   }
-  face = sumFace / midAveraging;
+  face = sumFace / lowAveraging;
   sumFace = 0;
   
   for (int x = 0; x < lowAveraging; x++) {
