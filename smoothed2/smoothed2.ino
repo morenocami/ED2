@@ -25,9 +25,9 @@
 
 //speaker enable pins
 #define speakerObstacle 8 //obstacle alert
-#define speakerIntro 9 //intro
+#define speakerBackup 9 //intro
 //ultrasonic sensors @36degrees yields readings of about 40-50
-#define dropThreshHold 33
+#define dropThreshHold 35
 #define obstacleThreshHold 150
 //battery indicator LEDs and analog pin
 #define gLED 53
@@ -53,7 +53,7 @@ int dropLs[lowAveraging];
 int dropRs[lowAveraging];
 int lefts[midAveraging];
 int rights[midAveraging];
-int faces[lowAveraging];
+//int faces[lowAveraging];
 float batLevels[highAveraging];
 int lowIndex;
 int midIndex;
@@ -63,14 +63,14 @@ int sumDropL;
 int sumDropR;
 int sumLeft;
 int sumRight;
-int sumFace;
+//int sumFace;
 float sumBattery;
 //running average of array elements
 int dropL;
 int dropR;
 int left;
 int right;
-int face;
+//int face;
 float batteryLevel;
 
 
@@ -103,7 +103,7 @@ void setup() {
   pinMode(echo5, INPUT);
   //audio feedback modules
   pinMode(speakerObstacle, OUTPUT);
-  pinMode(speakerIntro, OUTPUT);
+  pinMode(speakerBackup, OUTPUT);
 
   //BNO055 setup
   if (!bno.begin()) {
@@ -117,7 +117,7 @@ void setup() {
 
   //initialize all elements in all smoothing arrays to ZERO
   for (int x = 0; x < lowAveraging; x++) {
-    faces[x] = 0;
+//    faces[x] = 0;
     dropLs[x] = 0;
     dropRs[x] = 0;
   }
@@ -135,22 +135,14 @@ void setup() {
   sumRight = 0;
   sumDropL = 0;
   sumDropR = 0;
-  sumFace = 0;
+//  sumFace = 0;
   sumBattery = 0;
 
   //Battery status LED
   pinMode(gLED, OUTPUT);
   pinMode(yLED, OUTPUT);
   pinMode(rLED, OUTPUT);
-
-  //startup sound
-  digitalWrite(speakerIntro, HIGH);
-  delay(3000);
-  digitalWrite(speakerIntro, LOW);
 }
-
-
-
 
 
 
@@ -184,13 +176,13 @@ void loop() {
   duration = pulseIn(echo4, HIGH, 3000);
   dropRs[lowIndex] = (duration / 2) / 20;
   
-  digitalWrite(trig5, LOW);
-  delayMicroseconds(2);
-  digitalWrite(trig5, HIGH);
-  delayMicroseconds(8);
-  digitalWrite(trig5, LOW);
-  duration = pulseIn(echo5, HIGH, 5000);
-  faces[lowIndex] = (duration / 2) / 20;
+//  digitalWrite(trig5, LOW);
+//  delayMicroseconds(2);
+//  digitalWrite(trig5, HIGH);
+//  delayMicroseconds(8);
+//  digitalWrite(trig5, LOW);
+//  duration = pulseIn(echo5, HIGH, 5000);
+//  faces[lowIndex] = (duration / 2) / 20;
   
   digitalWrite(trig3, LOW);
   delayMicroseconds(2);
@@ -219,7 +211,32 @@ void loop() {
   
   //if there's a drop, brake
   if (dropL > dropThreshHold || dropR > dropThreshHold || dropR==0 || dropL==0) {
-    dutyCycle = 0;
+    //backup sound
+    digitalWrite(speakerBackup, HIGH);
+    delay(10);
+    digitalWrite(speakerBackup, LOW);
+    //stop
+    analogWrite(pwm1, 0);
+    analogWrite(pwm2, 0);
+    delay(1500);
+    // set both motors to move backward
+    digitalWrite(dir2, LOW);
+    digitalWrite(dir1, HIGH);
+    //move back
+    analogWrite(pwm1, 35);
+    analogWrite(pwm2, 35);
+    delay(3000);
+    //stop
+    analogWrite(pwm1, 0);
+    analogWrite(pwm2, 0);
+    delay(1000);
+    // set both motors to move foward
+    digitalWrite(dir2, HIGH);
+    digitalWrite(dir1, LOW);
+    for (int x = 0; x < lowAveraging; x++) {
+      dropLs[x] = 20;
+      dropRs[x] = 20;
+    }
   }
   
   //if there's an obstacle, reduce speed
@@ -227,28 +244,25 @@ void loop() {
   else{
     if (right < obstacleThreshHold) {
       dutyCycle = dutyCycle - map(right, 30, obstacleThreshHold, 75, 1);
-      if(right<50) digitalWrite(speakerObstacle,HIGH);
+      if(right<50 || right!=0) digitalWrite(speakerObstacle,LOW);
     }
     else if(left < obstacleThreshHold) {
       dutyCycle = dutyCycle - map(left, 30, obstacleThreshHold, 75, 1);
-      if(left<50) digitalWrite(speakerObstacle,HIGH);
+      if(left<50 || left!=0) digitalWrite(speakerObstacle,LOW);
     }
   }
   
-  if(left>80 || right>80){
-    digitalWrite(speakerObstacle,LOW);
+  if(left>120 || right>120){
+    digitalWrite(speakerObstacle,HIGH);
   }
   
   //User tracking ultrasonic
-  if(face>=50 && face<=100){
-    dutyCycle = dutyCycle - map(face, 50, 100, 1, 75);
-  }
-  else if(face>100){
-    dutyCycle=0;
-  }
-
-
-    Serial.println(face);
+//  if(face>=50 && face<=100){
+//    dutyCycle = dutyCycle - map(face, 50, 100, 1, 75);
+//  }
+//  else if(face>100){
+//    dutyCycle=0;
+//  }
 
 
 
@@ -317,11 +331,11 @@ void loop() {
 //each for loop adds the elements of an array and sets the corresponding distance variable to an average
 
 void calcRunAvgs() {
-  for (int x = 0; x < lowAveraging; x++) {
-    sumFace += faces[x];
-  }
-  face = sumFace / lowAveraging;
-  sumFace = 0;
+//  for (int x = 0; x < lowAveraging; x++) {
+//    sumFace += faces[x];
+//  }
+//  face = sumFace / lowAveraging;
+//  sumFace = 0;
   
   for (int x = 0; x < lowAveraging; x++) {
     sumDropL += dropLs[x];

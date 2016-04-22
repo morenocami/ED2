@@ -1,5 +1,6 @@
-#define trig5 30
-#define echo5 31
+#define trig5 22
+#define echo5 23
+
 int duration = 0;
 int face=0;
 void setup() {
