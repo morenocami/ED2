@@ -3,7 +3,6 @@
 #include <Adafruit_BNO055.h>
 #include <utility/imumaths.h>
 
-#define BNO055_SAMPLERATE_DELAY_MS (100)
 //pins for the motor driver
 #define dir1 13
 #define pwm1 12
@@ -91,19 +90,19 @@ void setup() {
   pinMode(lB, INPUT);
   pinMode(rB, INPUT);
   //ultrasonic sensors
-  pinMode(trig1, OUTPUT);
-  pinMode(echo1, INPUT);
+//  pinMode(trig1, OUTPUT);
+//  pinMode(echo1, INPUT);
   pinMode(trig2, OUTPUT);
   pinMode(echo2, INPUT);
   pinMode(trig3, OUTPUT);
   pinMode(echo3, INPUT);
-  pinMode(trig4, OUTPUT);
-  pinMode(echo4, INPUT);
-  pinMode(trig5, OUTPUT);
-  pinMode(echo5, INPUT);
+//  pinMode(trig4, OUTPUT);
+//  pinMode(echo4, INPUT);
+//  pinMode(trig5, OUTPUT);
+//  pinMode(echo5, INPUT);
   //audio feedback modules
   pinMode(speakerObstacle, OUTPUT);
-  pinMode(speakerBackup, OUTPUT);
+//  pinMode(speakerBackup, OUTPUT);
 
   //BNO055 setup
   if (!bno.begin()) {
@@ -116,11 +115,11 @@ void setup() {
   Serial.begin(9600);
 
   //initialize all elements in all smoothing arrays to ZERO
-  for (int x = 0; x < lowAveraging; x++) {
-//    faces[x] = 0;
-    dropLs[x] = 0;
-    dropRs[x] = 0;
-  }
+//  for (int x = 0; x < lowAveraging; x++) {
+////    faces[x] = 0;
+//    dropLs[x] = 0;
+//    dropRs[x] = 0;
+//  }
   for (int x = 0; x < midAveraging; x++) {
     lefts[x] = 0;
     rights[x] = 0;
@@ -128,13 +127,13 @@ void setup() {
   for (int x = 0; x < highAveraging; x++) {
     batLevels[x] = 0;
   }
-  lowIndex = 0;
+//  lowIndex = 0;
   midIndex = 0;
   highIndex = 0;
   sumLeft = 0;
   sumRight = 0;
-  sumDropL = 0;
-  sumDropR = 0;
+//  sumDropL = 0;
+//  sumDropR = 0;
 //  sumFace = 0;
   sumBattery = 0;
 
@@ -168,13 +167,13 @@ void loop() {
   duration = pulseIn(echo2, HIGH, 9000);
   lefts[midIndex] = (duration / 2) / 20;
   
-  digitalWrite(trig4, LOW);
-  delayMicroseconds(2);
-  digitalWrite(trig4, HIGH);
-  delayMicroseconds(8);
-  digitalWrite(trig4, LOW);
-  duration = pulseIn(echo4, HIGH, 3000);
-  dropRs[lowIndex] = (duration / 2) / 20;
+//  digitalWrite(trig4, LOW);
+//  delayMicroseconds(2);
+//  digitalWrite(trig4, HIGH);
+//  delayMicroseconds(8);
+//  digitalWrite(trig4, LOW);
+//  duration = pulseIn(echo4, HIGH, 3000);
+//  dropRs[lowIndex] = (duration / 2) / 20;
   
 //  digitalWrite(trig5, LOW);
 //  delayMicroseconds(2);
@@ -191,14 +190,14 @@ void loop() {
   digitalWrite(trig3, LOW);
   duration = pulseIn(echo3, HIGH, 9000);
   rights[midIndex] = (duration / 2) / 20;
-  
-  digitalWrite(trig1, LOW);
-  delayMicroseconds(2);
-  digitalWrite(trig1, HIGH);
-  delayMicroseconds(8);
-  digitalWrite(trig1, LOW);
-  duration = pulseIn(echo1, HIGH, 3000);
-  dropLs[lowIndex] = (duration / 2) / 20;
+
+//  digitalWrite(trig1, LOW);
+//  delayMicroseconds(2);
+//  digitalWrite(trig1, HIGH);
+//  delayMicroseconds(8);
+//  digitalWrite(trig1, LOW);
+//  duration = pulseIn(echo1, HIGH, 3000);
+//  dropLs[lowIndex] = (duration / 2) / 20;
 
   batLevels[highIndex] = analogRead(batVoltagePin) * (5.0 / 1023.0) - 0.29;
 
@@ -210,34 +209,34 @@ void loop() {
   calcRunAvgs();
   
   //if there's a drop, brake
-  if (dropL > dropThreshHold || dropR > dropThreshHold || dropR==0 || dropL==0) {
-    //backup sound
-    digitalWrite(speakerBackup, HIGH);
-    delay(10);
-    digitalWrite(speakerBackup, LOW);
-    //stop
-    analogWrite(pwm1, 0);
-    analogWrite(pwm2, 0);
-    delay(1500);
-    // set both motors to move backward
-    digitalWrite(dir2, LOW);
-    digitalWrite(dir1, HIGH);
-    //move back
-    analogWrite(pwm1, 35);
-    analogWrite(pwm2, 35);
-    delay(3000);
-    //stop
-    analogWrite(pwm1, 0);
-    analogWrite(pwm2, 0);
-    delay(1000);
-    // set both motors to move foward
-    digitalWrite(dir2, HIGH);
-    digitalWrite(dir1, LOW);
-    for (int x = 0; x < lowAveraging; x++) {
-      dropLs[x] = 20;
-      dropRs[x] = 20;
-    }
-  }
+//  if (dropL > dropThreshHold || dropR > dropThreshHold || dropR==0 || dropL==0) {
+//    //backup sound
+//    digitalWrite(speakerBackup, HIGH);
+//    delay(10);
+//    digitalWrite(speakerBackup, LOW);
+//    //stop
+//    analogWrite(pwm1, 0);
+//    analogWrite(pwm2, 0);
+//    delay(1500);
+//    // set both motors to move backward
+//    digitalWrite(dir2, LOW);
+//    digitalWrite(dir1, HIGH);
+//    //move back
+//    analogWrite(pwm1, 35);
+//    analogWrite(pwm2, 35);
+//    delay(3000);
+//    //stop
+//    analogWrite(pwm1, 0);
+//    analogWrite(pwm2, 0);
+//    delay(1000);
+//    // set both motors to move foward
+//    digitalWrite(dir2, HIGH);
+//    digitalWrite(dir1, LOW);
+//    for (int x = 0; x < lowAveraging; x++) {
+//      dropLs[x] = 20;
+//      dropRs[x] = 20;
+//    }
+//  }
   
   //if there's an obstacle, reduce speed
   if(right<30 || left <30){}
@@ -316,10 +315,10 @@ void loop() {
   }
 
   //increment array access indexes
-  lowIndex++;
+//  lowIndex++;
   midIndex++;
   highIndex++;
-  if(lowIndex==lowAveraging)   lowIndex=0;
+//  if(lowIndex==lowAveraging)   lowIndex=0;
   if(midIndex==midAveraging)   midIndex=0;
   if(highIndex==highAveraging) highIndex=0;
 
@@ -337,17 +336,17 @@ void calcRunAvgs() {
 //  face = sumFace / lowAveraging;
 //  sumFace = 0;
   
-  for (int x = 0; x < lowAveraging; x++) {
-    sumDropL += dropLs[x];
-  }
-  dropL = sumDropL / lowAveraging;
-  sumDropL = 0;
-
-  for (int x = 0; x < lowAveraging; x++) {
-    sumDropR += dropRs[x];
-  }
-  dropR = sumDropR / lowAveraging;
-  sumDropR = 0;
+//  for (int x = 0; x < lowAveraging; x++) {
+//    sumDropL += dropLs[x];
+//  }
+//  dropL = sumDropL / lowAveraging;
+//  sumDropL = 0;
+//
+//  for (int x = 0; x < lowAveraging; x++) {
+//    sumDropR += dropRs[x];
+//  }
+//  dropR = sumDropR / lowAveraging;
+//  sumDropR = 0;
 
   for (int x = 0; x < midAveraging; x++) {
     sumLeft += lefts[x];
