@@ -25,7 +25,7 @@
 
 //speaker enable pins
 #define speakerObstacle 8 //obstacle alert
-#define speakerBackup 9 //intro
+#define speakerBackup 9 //curb alert
 //ultrasonic sensors @36degrees yields readings of about 40-50
 #define dropThreshHold 35
 #define obstacleThreshHold 150
@@ -272,7 +272,7 @@ void loop() {
   //
   if (motorOn) {
     //reduce speed if there is tilt
-    dutyCycle = dutyCycle - map(euler.y(), -20, 30, -30, 60);
+    dutyCycle = dutyCycle - map(euler.y(), -20, 30, -50, 70);
     
     //zero speed if negative
     if (dutyCycle < 0) {
