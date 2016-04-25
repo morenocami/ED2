@@ -240,7 +240,7 @@ void loop() {
   }
   
   //if there's an obstacle, reduce speed
-  if(right<30 || left <30){}
+  if(right==0 || left==0){}
   else{
     if (right < obstacleThreshHold) {
       dutyCycle = dutyCycle - map(right, 30, obstacleThreshHold, 75, 1);
