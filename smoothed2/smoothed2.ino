@@ -209,35 +209,7 @@ void loop() {
 
   calcRunAvgs();
   
-  //if there's a drop, brake
-  if (dropL > dropThreshHold || dropR > dropThreshHold || dropR==0 || dropL==0) {
-    //backup sound
-    digitalWrite(speakerBackup, HIGH);
-    delay(10);
-    digitalWrite(speakerBackup, LOW);
-    //stop
-    analogWrite(pwm1, 0);
-    analogWrite(pwm2, 0);
-    delay(1500);
-    // set both motors to move backward
-    digitalWrite(dir2, LOW);
-    digitalWrite(dir1, HIGH);
-    //move back
-    analogWrite(pwm1, 35);
-    analogWrite(pwm2, 35);
-    delay(3000);
-    //stop
-    analogWrite(pwm1, 0);
-    analogWrite(pwm2, 0);
-    delay(1000);
-    // set both motors to move foward
-    digitalWrite(dir2, HIGH);
-    digitalWrite(dir1, LOW);
-    for (int x = 0; x < lowAveraging; x++) {
-      dropLs[x] = 20;
-      dropRs[x] = 20;
-    }
-  }
+  
   
   //if there's an obstacle, reduce speed
   if(right==0 || left==0){}
@@ -271,6 +243,36 @@ void loop() {
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////
   //
   if (motorOn) {
+    //if there's a drop, brake
+    if (dropL > dropThreshHold || dropR > dropThreshHold || dropR==0 || dropL==0) {
+      //backup sound
+      digitalWrite(speakerBackup, HIGH);
+      delay(10);
+      digitalWrite(speakerBackup, LOW);
+      //stop
+      analogWrite(pwm1, 0);
+      analogWrite(pwm2, 0);
+      delay(1500);
+      // set both motors to move backward
+      digitalWrite(dir2, LOW);
+      digitalWrite(dir1, HIGH);
+      //move back
+      analogWrite(pwm1, 35);
+      analogWrite(pwm2, 35);
+      delay(3000);
+      //stop
+      analogWrite(pwm1, 0);
+      analogWrite(pwm2, 0);
+      delay(1000);
+      // set both motors to move foward
+      digitalWrite(dir2, HIGH);
+      digitalWrite(dir1, LOW);
+      for (int x = 0; x < lowAveraging; x++) {
+        dropLs[x] = 20;
+        dropRs[x] = 20;
+      }
+    }
+  
     //reduce speed if there is tilt
     dutyCycle = dutyCycle - map(euler.y(), -20, 30, -50, 70);
     
