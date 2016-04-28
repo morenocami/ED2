@@ -272,17 +272,18 @@ void loop() {
         dropRs[x] = 20;
       }
     }
-  
-    //reduce speed if there is tilt
-    dutyCycle = dutyCycle - map(euler.y(), -20, 30, -50, 70);
-    
-    //zero speed if negative
-    if (dutyCycle < 0) {
-      dutyCycle = 0;
+    else{
+      //reduce speed if there is tilt
+      dutyCycle = dutyCycle - map(euler.y(), -20, 30, -50, 70);
+      
+      //zero speed if negative
+      if (dutyCycle < 0) {
+        dutyCycle = 0;
+      }
+      
+      analogWrite(pwm1, dutyCycle);
+      analogWrite(pwm2, dutyCycle);
     }
-    
-    analogWrite(pwm1, dutyCycle);
-    analogWrite(pwm2, dutyCycle);
   }
   //motor BRAKES if either button not pressed
   if ((leftB == LOW || rightB == LOW) && motorOn){
