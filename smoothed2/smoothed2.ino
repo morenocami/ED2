@@ -34,6 +34,7 @@
 #define yLED 52
 #define rLED 48
 #define batVoltagePin 0
+#define speedKnobPin A1
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -104,6 +105,8 @@ void setup() {
   //audio feedback modules
   pinMode(speakerObstacle, OUTPUT);
   pinMode(speakerBackup, OUTPUT);
+  //potentiometer pin
+  pinMode(speedKnobPin, INPUT);
 
   //BNO055 setup
   if (!bno.begin()) {
@@ -150,11 +153,14 @@ void setup() {
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void loop() {
+  int speedKnob = analogRead(speedKnobPin);
+  //base speed
+  dutyCycle = 80 - map(speedKnob, 10, 740, 0, 80);
+  
   rightB = digitalRead(6);
   leftB = digitalRead(7);
 
-  //base speed
-  dutyCycle = 75;
+
 
   //reading 9DOF
   imu::Vector<3> euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER);
@@ -240,7 +246,7 @@ void loop() {
   }
   
   //if there's an obstacle, reduce speed
-  if(right<30 || left <30){}
+  if(right==0 || left ==0){}
   else{
     if (right < obstacleThreshHold) {
       dutyCycle = dutyCycle - map(right, 30, obstacleThreshHold, 75, 1);
